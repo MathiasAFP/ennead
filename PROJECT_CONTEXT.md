@@ -318,3 +318,99 @@ Dashboard
 - Priorizar velocidade e clareza durante a demonstração.
 
 A tela mais importante do sistema é o Workspace do Chamado.
+
+## Privacidade, Segurança e LGPD
+
+Privacidade e proteção de dados são requisitos fundamentais da arquitetura do Reperio e devem ser consideradas desde o desenvolvimento, seguindo princípios de privacy by design.
+
+### Princípios
+
+- Coletar e armazenar somente dados necessários para a finalidade do atendimento.
+- Evitar armazenamento de dados pessoais desnecessários.
+- Aplicar cuidado reforçado a dados pessoais sensíveis.
+- Utilizar dados fictícios durante desenvolvimento e demonstração do hackathon.
+- Nunca considerar embeddings automaticamente anônimos.
+- Nunca expor chaves privadas, service_role ou segredos no frontend.
+- Não registrar dados pessoais ou sensíveis desnecessariamente em logs.
+
+### Banco de Dados
+
+Quando Supabase/PostgreSQL for implementado:
+
+- Utilizar tenant_id para separar dados de diferentes organizações.
+- Ativar Row Level Security (RLS).
+- Impedir acesso entre organizações.
+- Utilizar UUIDs como identificadores.
+- Aplicar políticas de acesso restritivas.
+- Permitir exclusão ou anonimização de dados quando necessário.
+- Considerar política de retenção de dados.
+- Manter informações sensíveis fora de tabelas ou campos quando não forem necessárias.
+
+### Busca Semântica e Embeddings
+
+Antes da geração de embeddings, criar futuramente uma etapa de sanitização/minimização.
+
+Sempre que possível, remover ou substituir do texto usado para busca semântica:
+
+- Nomes completos.
+- CPF.
+- RG.
+- E-mails.
+- Telefones.
+- Endereços.
+- Identificadores pessoais.
+- Dados de saúde.
+- Biometria.
+- Religião.
+- Opinião política.
+- Origem racial ou étnica.
+- Vida sexual.
+- Outros dados sensíveis não necessários para solucionar o chamado.
+
+O texto sanitizado deve ser utilizado para geração de embeddings.
+
+O conteúdo original, quando realmente necessário para a operação, deve permanecer separado e sujeito a controles de acesso mais restritos.
+
+### APIs Externas
+
+- Enviar para APIs externas somente o conteúdo mínimo necessário.
+- Priorizar texto previamente sanitizado.
+- Nunca enviar segredos ou informações pessoais desnecessárias.
+- Chamadas de embeddings devem ocorrer exclusivamente no servidor.
+- Antes de uso em produção, avaliar políticas de tratamento de dados, contratos, retenção e transferência internacional dos fornecedores envolvidos.
+
+### Segurança
+
+A arquitetura deverá posteriormente considerar:
+
+- Autenticação.
+- Autorização.
+- Isolamento entre organizações.
+- Proteção contra acesso indevido.
+- Auditoria de ações relevantes.
+- Tratamento seguro de variáveis de ambiente.
+- Prevenção de exposição de dados em logs e mensagens de erro.
+- Proteção dos endpoints do servidor.
+
+### Importante
+
+O MVP de hackathon não deve alegar automaticamente estar "100% em conformidade com a LGPD".
+
+A arquitetura deve ser desenvolvida com os princípios da LGPD em mente, mas conformidade real também depende de aspectos jurídicos, organizacionais, bases legais, políticas internas, contratos e processos de tratamento de dados.
+
+## Melhorias Futuras
+
+### Registro Inteligente por Voz
+
+Possível evolução futura:
+
+- Permitir que o atendente grave um áudio após resolver o chamado.
+- Transcrever o áudio.
+- Utilizar IA para sugerir causa, solução e passos executados.
+- Exigir revisão e confirmação humana antes de salvar.
+- Manter preenchimento manual como alternativa.
+- Aplicar sanitização/minimização de dados antes do processamento.
+- Evitar armazenar o áudio original por padrão.
+- Considerar requisitos de LGPD e privacidade.
+
+Essa funcionalidade não faz parte do MVP atual.
