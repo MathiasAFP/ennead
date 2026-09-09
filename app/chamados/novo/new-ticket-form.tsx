@@ -1,10 +1,11 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { SearchCheck } from "lucide-react";
+import { createTicketAction } from "./actions";
 
 const categories = ["Rede", "Acesso", "Software", "Hardware", "Impressão", "Outro"];
 
@@ -12,7 +13,7 @@ type FormValues = {
   title: string;
   description: string;
   category: string;
-  requester: string;
+  department: string;
   equipment: string;
 };
 
@@ -22,7 +23,7 @@ const initialValues: FormValues = {
   title: "",
   description: "",
   category: "",
-  requester: "",
+  department: "",
   equipment: "",
 };
 
@@ -30,9 +31,12 @@ export function NewTicketForm() {
   const router = useRouter();
   const [values, setValues] = useState<FormValues>(initialValues);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isSubmitting, startTransition] = useTransition();
 
   function updateField(field: keyof FormValues, value: string) {
     setValues((currentValues) => ({ ...currentValues, [field]: value }));
+    setSubmissionError(null);
 
     if (field === "title" || field === "description") {
       setErrors((currentErrors) => ({ ...currentErrors, [field]: undefined }));
@@ -61,19 +65,38 @@ export function NewTicketForm() {
       return;
     }
 
-    sessionStorage.setItem(
-      "reperio:ticket-analysis",
-      JSON.stringify({
-        title: values.title.trim(),
-        description: values.description.trim(),
-        category: values.category,
-        requester: values.requester.trim(),
-        equipment: values.equipment.trim(),
-        createdAt: new Date().toISOString(),
-      }),
-    );
+    startTransition(async () => {
+      try {
+        const result = await createTicketAction({
+          title: values.title,
+          description: values.description,
+          category: values.category,
+          department: values.department,
+          equipment: values.equipment,
+        });
 
-    router.push("/chamados/analise");
+        if (!result.success) {
+          setSubmissionError(result.message);
+          return;
+        }
+
+        sessionStorage.setItem(
+          "reperio:ticket-analysis",
+          JSON.stringify({
+            ticketId: result.ticket.id,
+            ticketNumber: result.ticket.ticketNumber,
+            title: result.ticket.title,
+            description: result.ticket.description,
+            category: result.ticket.category,
+            createdAt: result.ticket.createdAt,
+          }),
+        );
+
+        router.push("/chamados/analise");
+      } catch {
+        setSubmissionError("Não foi possível criar o chamado. Tente novamente.");
+      }
+    });
   }
 
   return (
@@ -116,6 +139,10 @@ export function NewTicketForm() {
           </label>
           <p className="mt-1 text-sm text-slate-500">
             Descreva os sintomas e o contexto com o máximo de clareza possível.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Evite incluir CPF, dados de saúde ou outras informações pessoais que
+            não sejam necessárias para o atendimento.
           </p>
           <textarea
             aria-describedby={
@@ -171,19 +198,19 @@ export function NewTicketForm() {
             <div>
               <label
                 className="text-sm font-medium text-slate-600"
-                htmlFor="ticket-requester"
+                htmlFor="ticket-department"
               >
-                Usuário / setor
+                Setor
               </label>
               <input
                 className="mt-2 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                id="ticket-requester"
+                id="ticket-department"
                 onChange={(event) =>
-                  updateField("requester", event.target.value)
+                  updateField("department", event.target.value)
                 }
                 placeholder="Ex.: Financeiro"
                 type="text"
-                value={values.requester}
+                value={values.department}
               />
             </div>
 
@@ -209,6 +236,12 @@ export function NewTicketForm() {
         </div>
       </div>
 
+      {submissionError ? (
+        <p aria-live="polite" className="mt-5 text-sm text-red-600">
+          {submissionError}
+        </p>
+      ) : null}
+
       <div className="mt-7 flex items-center justify-end gap-3 border-t border-slate-100 pt-5">
         <Link
           className="flex h-11 items-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-200/60 transition hover:border-slate-300 hover:text-slate-950"
@@ -218,10 +251,11 @@ export function NewTicketForm() {
         </Link>
         <button
           className="flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-900/15 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          disabled={isSubmitting}
           type="submit"
         >
           <SearchCheck size={18} />
-          Analisar chamado
+          {isSubmitting ? "Criando chamado..." : "Analisar chamado"}
         </button>
       </div>
     </form>

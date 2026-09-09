@@ -19,6 +19,8 @@ import {
 import { Sidebar } from "../../components/sidebar";
 
 type TicketAnalysis = {
+  ticketId?: string;
+  ticketNumber?: number;
   title: string;
   description: string;
   category?: string;

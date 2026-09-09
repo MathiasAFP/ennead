@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { Eye, Plus } from "lucide-react";
 import { Sidebar } from "../components/sidebar";
-import { recentTickets, ticketStatusStyles } from "../components/mock-tickets";
+import { ticketStatusLabels, ticketStatusStyles } from "../components/ticket-status";
+import { formatTicketUpdatedAt, getTickets } from "../lib/data/tickets";
 
-export default function TicketsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function TicketsPage() {
+  const tickets = await getTickets();
+
   return (
     <main className="min-h-screen bg-[#f5f7fb] text-slate-950">
       <Sidebar activeItem="Chamados" />
@@ -28,68 +33,77 @@ export default function TicketsPage() {
             </Link>
           </header>
 
-          <section className="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
-            <div className="border-b border-slate-100 px-5 py-4">
-              <h2 className="text-base font-semibold text-slate-950">
-                Todos os chamados
-              </h2>
-            </div>
-            <div className="overflow-hidden">
-              <table className="w-full table-fixed border-collapse text-left">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/80 text-xs uppercase text-slate-500">
-                    <th className="w-[88px] px-5 py-3 font-semibold">ID</th>
-                    <th className="px-5 py-3 font-semibold">Chamado</th>
-                    <th className="w-32 px-5 py-3 font-semibold">Categoria</th>
-                    <th className="w-36 px-5 py-3 font-semibold">Status</th>
-                    <th className="w-36 px-5 py-3 font-semibold">Atualização</th>
-                    <th className="w-28 px-5 py-3 font-semibold">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {recentTickets.map((ticket) => (
-                    <tr className="transition hover:bg-slate-50" key={ticket.id}>
-                      <td className="px-5 py-4 text-sm font-semibold text-slate-500">
-                        {ticket.id}
-                      </td>
-                      <td className="px-5 py-4">
-                        <p className="truncate text-sm font-semibold text-slate-950">
-                          {ticket.title}
-                        </p>
-                        <p className="mt-1 truncate text-sm text-slate-500">
-                          {ticket.description}
-                        </p>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-slate-600">
-                        {ticket.category}
-                      </td>
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                            ticketStatusStyles[ticket.status]
-                          }`}
-                        >
-                          {ticket.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-sm text-slate-500">
-                        {ticket.updatedAt}
-                      </td>
-                      <td className="px-5 py-4">
-                        <Link
-                          className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 hover:text-blue-800"
-                          href="/chamados/analise"
-                        >
-                          <Eye size={17} />
-                          Visualizar
-                        </Link>
-                      </td>
+          {tickets ? (
+            <section className="rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60">
+              <div className="border-b border-slate-100 px-5 py-4">
+                <h2 className="text-base font-semibold text-slate-950">
+                  Todos os chamados
+                </h2>
+              </div>
+              <div className="overflow-hidden">
+                <table className="w-full table-fixed border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/80 text-xs uppercase text-slate-500">
+                      <th className="w-[88px] px-5 py-3 font-semibold">ID</th>
+                      <th className="px-5 py-3 font-semibold">Chamado</th>
+                      <th className="w-32 px-5 py-3 font-semibold">
+                        Categoria
+                      </th>
+                      <th className="w-36 px-5 py-3 font-semibold">Status</th>
+                      <th className="w-36 px-5 py-3 font-semibold">
+                        Atualização
+                      </th>
+                      <th className="w-28 px-5 py-3 font-semibold">Ação</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {tickets.map((ticket) => (
+                      <tr className="transition hover:bg-slate-50" key={ticket.id}>
+                        <td className="px-5 py-4 text-sm font-semibold text-slate-500">
+                          #{ticket.ticketNumber}
+                        </td>
+                        <td className="px-5 py-4">
+                          <p className="truncate text-sm font-semibold text-slate-950">
+                            {ticket.title}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-slate-600">
+                          {ticket.category ?? "Sem categoria"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                              ticketStatusStyles[ticket.status]
+                            }`}
+                          >
+                            {ticketStatusLabels[ticket.status]}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-slate-500">
+                          {formatTicketUpdatedAt(ticket.updatedAt)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <Link
+                            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 hover:text-blue-800"
+                            href="/chamados/analise"
+                          >
+                            <Eye size={17} />
+                            Visualizar
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : (
+            <section className="rounded-xl border border-slate-200 bg-white px-5 py-6 shadow-sm shadow-slate-200/60">
+              <p className="text-sm font-medium text-slate-700">
+                Não foi possível carregar os chamados no momento.
+              </p>
+            </section>
+          )}
         </div>
       </section>
     </main>
