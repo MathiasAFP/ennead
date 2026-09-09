@@ -1,9 +1,9 @@
 import "server-only";
 
+import { MVP_ORGANIZATION_ID } from "./mvp-organization.mjs";
 import { createSupabaseAdminClient } from "../supabase-admin";
 
-// Temporary fixed organization for the MVP while authentication is unavailable.
-export const MVP_ORGANIZATION_ID = "00000000-0000-4000-8000-000000000001";
+export { MVP_ORGANIZATION_ID };
 const ticketColumns = "id, ticket_number, title, category, status, updated_at";
 
 type TicketStatus = "open" | "analyzing" | "resolved";

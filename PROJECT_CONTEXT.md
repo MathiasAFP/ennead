@@ -162,7 +162,7 @@ Decisões técnicas para o MVP:
 - Tailwind CSS.
 - Supabase/PostgreSQL.
 - pgvector para busca por similaridade semântica.
-- API de embeddings chamada somente pelo servidor.
+- Ollama local com o modelo bge-m3 para embeddings de 1024 dimensões.
 - Lucide React para ícones.
 - Vercel como opção de deploy.
 
@@ -176,6 +176,8 @@ Princípios técnicos:
 - Preparar dados fictícios realistas para demonstrar chamados anteriores.
 - A busca semântica real será a funcionalidade central.
 - Deve existir posteriormente uma estratégia simples de fallback para a demo caso algum serviço externo esteja indisponível.
+- A geração de embeddings ocorre somente no servidor, usando Ollama local durante o hackathon, sem custo de API.
+- Uma versão futura em produção poderá trocar o provedor de embeddings sem alterar o conceito do sistema.
 
 ## Fluxo e Telas do MVP
 
@@ -368,6 +370,10 @@ Sempre que possível, remover ou substituir do texto usado para busca semântica
 - Outros dados sensíveis não necessários para solucionar o chamado.
 
 O texto sanitizado deve ser utilizado para geração de embeddings.
+
+No MVP, os embeddings utilizam Ollama local com o modelo bge-m3 e 1024 dimensões. Somente conteúdo previamente sanitizado pode ser enviado ao Ollama. `description_original` nunca deve ser usado como fallback para geração de embeddings.
+
+O Ollama roda localmente no computador responsável pela demonstração. Uma futura versão em produção poderá usar outro provedor de embeddings sem alterar o conceito de recuperação de conhecimento do sistema.
 
 O conteúdo original, quando realmente necessário para a operação, deve permanecer separado e sujeito a controles de acesso mais restritos.
 
