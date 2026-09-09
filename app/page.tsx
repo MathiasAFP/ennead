@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Sidebar } from "./components/sidebar";
+import { recentTickets, ticketStatusStyles } from "./components/mock-tickets";
 
 const indicators = [
   {
@@ -31,67 +32,10 @@ const indicators = [
   },
 ];
 
-const recentTickets = [
-  {
-    id: "#1048",
-    title: "Impressora não aparece na rede",
-    description: "Fila de impressão indisponível para o financeiro.",
-    category: "Rede",
-    status: "Em análise",
-    updatedAt: "Hoje, 14:25",
-  },
-  {
-    id: "#1047",
-    title: "Usuário não consegue acessar o ERP",
-    description: "Login retorna erro depois da troca de senha.",
-    category: "Acesso",
-    status: "Aberto",
-    updatedAt: "Hoje, 13:40",
-  },
-  {
-    id: "#1046",
-    title: "Computador perde conexão durante o expediente",
-    description: "Quedas recorrentes em estação cabeada.",
-    category: "Rede",
-    status: "Resolvido",
-    updatedAt: "Hoje, 11:18",
-  },
-  {
-    id: "#1045",
-    title: "Erro ao sincronizar arquivos compartilhados",
-    description: "Cliente de sincronização trava ao abrir pastas.",
-    category: "Software",
-    status: "Em análise",
-    updatedAt: "Ontem, 17:52",
-  },
-  {
-    id: "#1044",
-    title: "Monitor secundário não é reconhecido",
-    description: "Tela externa não aparece após reiniciar.",
-    category: "Hardware",
-    status: "Resolvido",
-    updatedAt: "Ontem, 15:06",
-  },
-  {
-    id: "#1043",
-    title: "Senha expirada impede acesso ao sistema",
-    description: "Usuário bloqueado no portal interno.",
-    category: "Acesso",
-    status: "Resolvido",
-    updatedAt: "22 jan, 09:34",
-  },
-];
-
-const statusStyles: Record<string, string> = {
-  Aberto: "border-blue-200 bg-blue-50 text-blue-700",
-  "Em análise": "border-amber-200 bg-amber-50 text-amber-700",
-  Resolvido: "border-emerald-200 bg-emerald-50 text-emerald-700",
-};
-
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#f5f7fb] text-slate-950">
-      <Sidebar />
+      <Sidebar activeItem="Dashboard" />
 
       <section className="ml-72 min-h-screen px-6 py-5">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -161,12 +105,12 @@ export default function Home() {
                     Últimos atendimentos registrados pela equipe.
                   </p>
                 </div>
-                <button
+                <Link
                   className="text-sm font-semibold text-blue-700 transition hover:text-blue-800"
-                  type="button"
+                  href="/chamados"
                 >
                   Ver todos
-                </button>
+                </Link>
               </div>
 
               <div className="overflow-hidden">
@@ -208,7 +152,7 @@ export default function Home() {
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                              statusStyles[ticket.status]
+                              ticketStatusStyles[ticket.status]
                             }`}
                           >
                             {ticket.status}

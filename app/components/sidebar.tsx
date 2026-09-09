@@ -8,16 +8,25 @@ import {
 } from "lucide-react";
 
 type SidebarProps = {
-  activeItem?: "Dashboard" | "Chamados" | null;
+  activeItem?:
+    | "Dashboard"
+    | "Chamados"
+    | "Base de conhecimento"
+    | "Configurações"
+    | null;
 };
 
 const navigation = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "Chamados", icon: Ticket, href: "#" },
-  { label: "Base de conhecimento", icon: BookOpen, href: "#" },
+  { label: "Chamados", icon: Ticket, href: "/chamados" },
+  {
+    label: "Base de conhecimento",
+    icon: BookOpen,
+    href: "/base-conhecimento",
+  },
 ];
 
-export function Sidebar({ activeItem = "Dashboard" }: SidebarProps) {
+export function Sidebar({ activeItem = null }: SidebarProps) {
   return (
     <aside className="fixed inset-y-0 left-0 flex w-72 flex-col bg-[#0f1e33] px-5 py-6 text-white">
       <div className="flex items-center gap-3 px-2">
@@ -53,13 +62,17 @@ export function Sidebar({ activeItem = "Dashboard" }: SidebarProps) {
 
       <div className="my-5 border-t border-white/10" />
 
-      <a
-        className="flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-300 transition hover:bg-white/[0.07] hover:text-white"
-        href="#"
+      <Link
+        className={`flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition ${
+          activeItem === "Configurações"
+            ? "bg-blue-500 text-white shadow-sm shadow-blue-950/20"
+            : "text-slate-300 hover:bg-white/[0.07] hover:text-white"
+        }`}
+        href="/configuracoes"
       >
         <Settings size={18} />
         Configurações
-      </a>
+      </Link>
 
       <div className="mt-auto flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-800">
