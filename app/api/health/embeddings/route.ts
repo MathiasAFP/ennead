@@ -8,6 +8,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "development") {
+    return new Response(null, { status: 404 });
+  }
+
   try {
     await generateEmbedding("Teste de conectividade do sistema");
 

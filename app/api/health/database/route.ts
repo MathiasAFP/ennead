@@ -3,6 +3,10 @@ import { createSupabaseAdminClient } from "../../../lib/supabase-admin";
 export const runtime = "nodejs";
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "development") {
+    return new Response(null, { status: 404 });
+  }
+
   try {
     const supabase = createSupabaseAdminClient();
     const [organizations, tickets, resolutions] = await Promise.all([

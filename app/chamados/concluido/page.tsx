@@ -44,12 +44,16 @@ export default function CompletionPage() {
 
     const { ticketId, indexed } = storedResolution;
     const controller = new AbortController();
+    const timeoutSignal = AbortSignal.timeout(10_000);
 
     async function loadSummary() {
       try {
         const response = await fetch(
           `/api/tickets/${ticketId}/resolution`,
-          { cache: "no-store", signal: controller.signal },
+          {
+            cache: "no-store",
+            signal: AbortSignal.any([controller.signal, timeoutSignal]),
+          },
         );
 
         if (!response.ok) {

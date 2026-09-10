@@ -60,13 +60,13 @@ export default async function Home() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                aria-label="Buscar"
+              <Link
+                aria-label="Buscar na base de conhecimento"
                 className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-200/60 transition hover:border-slate-300 hover:text-slate-950"
-                type="button"
+                href="/base-conhecimento"
               >
                 <Search size={19} />
-              </button>
+              </Link>
               <Link
                 className="flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-900/15 transition hover:bg-blue-700"
                 href="/chamados/novo"
