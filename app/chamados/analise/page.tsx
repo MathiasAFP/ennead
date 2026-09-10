@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,119 +40,94 @@ type SimilarCase = {
   observation: string;
 };
 
-const similarCases: SimilarCase[] = [
-  {
-    id: "#0987",
-    title: "Estação do financeiro não localiza impressora compartilhada",
-    category: "Impressão",
-    similarity: 92,
-    summary:
-      "Computador de um usuário deixou de localizar uma impressora de rede que continuava disponível para outras máquinas.",
-    status: "Resolvido",
-    reportedProblem:
-      "O computador do setor financeiro não encontrava a impressora compartilhada, enquanto os demais computadores da rede continuavam imprimindo normalmente.",
-    identifiedCause:
-      "Mapeamento antigo da impressora permaneceu associado a um endereço de rede que havia sido alterado após uma atualização.",
-    appliedSolution:
-      "Remoção da impressora antiga e novo mapeamento utilizando o endereço atualizado do servidor de impressão.",
-    steps: [
-      "Removida a impressora existente no Windows.",
-      "Confirmada conectividade com o servidor de impressão.",
-      "Localizado o compartilhamento atualizado.",
-      "Adicionada novamente a impressora.",
-      "Realizado teste de impressão.",
-    ],
-    observation:
-      "Não foi necessário alterar configurações nos outros computadores.",
-  },
-  {
-    id: "#0914",
-    title: "Impressora de rede desaparece após alteração de configuração",
-    category: "Rede",
-    similarity: 84,
-    summary:
-      "Equipamento deixou de encontrar uma impressora após mudanças na configuração da rede.",
-    status: "Resolvido",
-    reportedProblem:
-      "Usuário não conseguia visualizar uma impressora compartilhada depois de uma alteração na rede interna.",
-    identifiedCause:
-      "O computador estava utilizando informações antigas de resolução de nome do servidor.",
-    appliedSolution:
-      "Atualização das informações de rede e novo acesso ao compartilhamento da impressora.",
-    steps: [
-      "Verificada comunicação com o servidor.",
-      "Limpado cache de resolução de nomes.",
-      "Reconectado ao compartilhamento.",
-      "Remapeada a impressora.",
-      "Testada impressão.",
-    ],
-    observation: "O problema afetava somente uma estação.",
-  },
-  {
-    id: "#0762",
-    title: "Fila de impressão não conecta ao servidor",
-    category: "Impressão",
-    similarity: 73,
-    summary:
-      "Driver estava instalado corretamente, mas a estação não conseguia utilizar a fila compartilhada.",
-    status: "Resolvido",
-    reportedProblem:
-      "A impressora aparecia instalada no computador, porém os documentos permaneciam presos na fila.",
-    identifiedCause: "Conexão com a fila compartilhada estava corrompida.",
-    appliedSolution: "Recriação da conexão com a fila de impressão.",
-    steps: [
-      "Cancelados documentos pendentes.",
-      "Removida a conexão existente.",
-      "Reiniciado o serviço de impressão.",
-      "Adicionada novamente a fila compartilhada.",
-      "Realizado teste.",
-    ],
-    observation: "Não houve necessidade de reinstalar o driver.",
-  },
-];
-
 export default function TicketAnalysisPage() {
   const [ticket, setTicket] = useState<TicketAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
-  const [selectedCaseId, setSelectedCaseId] = useState(similarCases[0].id);
+  const [similarCases, setSimilarCases] = useState<SimilarCase[]>([]);
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [referenceCaseId, setReferenceCaseId] = useState<string | null>(null);
+  const [isSearchUnavailable, setIsSearchUnavailable] = useState(false);
   const detailsScrollRef = useRef<HTMLDivElement>(null);
 
+  const runSemanticSearch = useCallback(async (ticketId: string) => {
+    setIsAnalyzing(true);
+    setIsSearchUnavailable(false);
+    setReferenceCaseId(null);
+    sessionStorage.removeItem("reperio:reference-case");
+
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/similar`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!response.ok) {
+        throw new Error("Semantic search is unavailable.");
+      }
+
+      const payload = (await response.json()) as {
+        similarTickets?: SimilarCase[];
+      };
+
+      if (!Array.isArray(payload.similarTickets)) {
+        throw new Error("Semantic search returned an invalid response.");
+      }
+
+      setSimilarCases(payload.similarTickets);
+      setSelectedCaseId(payload.similarTickets[0]?.id ?? null);
+    } catch {
+      setSimilarCases([]);
+      setSelectedCaseId(null);
+      setIsSearchUnavailable(true);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const ticketTimeoutId = window.setTimeout(() => {
+    const storageTimeoutId = window.setTimeout(() => {
       const storedTicket = sessionStorage.getItem("reperio:ticket-analysis");
 
       if (!storedTicket) {
+        setIsSearchUnavailable(true);
+        setIsAnalyzing(false);
         return;
       }
 
       try {
-        setTicket(JSON.parse(storedTicket) as TicketAnalysis);
+        const parsedTicket = JSON.parse(storedTicket) as TicketAnalysis;
+        setTicket(parsedTicket);
+
+        if (!parsedTicket.ticketId) {
+          setIsSearchUnavailable(true);
+          setIsAnalyzing(false);
+          return;
+        }
+
+        void runSemanticSearch(parsedTicket.ticketId);
       } catch {
-        setTicket(null);
+        setIsSearchUnavailable(true);
+        setIsAnalyzing(false);
       }
     }, 0);
 
-    const analysisTimeoutId = window.setTimeout(() => {
-      setIsAnalyzing(false);
-    }, 1300);
-
-    return () => {
-      window.clearTimeout(ticketTimeoutId);
-      window.clearTimeout(analysisTimeoutId);
-    };
-  }, []);
+    return () => window.clearTimeout(storageTimeoutId);
+  }, [runSemanticSearch]);
 
   useEffect(() => {
     detailsScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [selectedCaseId]);
 
-  const selectedCase =
-    similarCases.find((similarCase) => similarCase.id === selectedCaseId) ??
-    similarCases[0];
+  const selectedCase = similarCases.find(
+    (similarCase) => similarCase.id === selectedCaseId,
+  );
   const hasSelectedReference = referenceCaseId !== null;
 
   function handleUseAsReference() {
+    if (!selectedCase) {
+      return;
+    }
+
     setReferenceCaseId(selectedCase.id);
     sessionStorage.setItem("reperio:reference-case", JSON.stringify(selectedCase));
   }
@@ -163,6 +138,10 @@ export default function TicketAnalysisPage() {
   }
 
   function selectNextCase() {
+    if (!selectedCase || similarCases.length === 0) {
+      return;
+    }
+
     const currentCaseIndex = similarCases.findIndex(
       (similarCase) => similarCase.id === selectedCase.id,
     );
@@ -182,12 +161,16 @@ export default function TicketAnalysisPage() {
               <h1 className="text-3xl font-semibold tracking-normal text-slate-950">
                 {isAnalyzing
                   ? "Analisando chamado"
-                  : "Casos semelhantes encontrados"}
+                  : isSearchUnavailable
+                    ? "Busca semântica indisponível"
+                    : "Casos semelhantes encontrados"}
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                 {isAnalyzing
                   ? "Procurando atendimentos anteriores semelhantes..."
-                  : "Encontramos atendimentos anteriores que podem ajudar na investigação deste chamado."}
+                  : isSearchUnavailable
+                    ? "Busca semântica indisponível no momento."
+                    : "Encontramos atendimentos anteriores que podem ajudar na investigação deste chamado."}
               </p>
             </div>
 
@@ -202,6 +185,18 @@ export default function TicketAnalysisPage() {
 
           {isAnalyzing ? (
             <AnalysisLoadingState ticket={ticket} />
+          ) : isSearchUnavailable ? (
+            <SemanticSearchUnavailable
+              canRetry={Boolean(ticket?.ticketId)}
+              onRetry={() => {
+                if (ticket?.ticketId) {
+                  void runSemanticSearch(ticket.ticketId);
+                }
+              }}
+              ticket={ticket}
+            />
+          ) : !selectedCase ? (
+            <NoSimilarTickets ticket={ticket} />
           ) : (
             <section className="flex min-h-0 flex-1 flex-col gap-4">
               <CurrentTicketSummary ticket={ticket} />
@@ -211,7 +206,7 @@ export default function TicketAnalysisPage() {
                   Casos semelhantes
                 </p>
                 <p className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                  3 casos encontrados
+                  {similarCases.length} casos encontrados
                 </p>
               </div>
 
@@ -255,7 +250,7 @@ export default function TicketAnalysisPage() {
                             {similarCase.status}
                           </span>
                           <span className="flex items-center gap-1 text-sm font-semibold text-blue-700">
-                            {similarCase.similarity}% similar
+                            {formatSimilarity(similarCase.similarity)} similar
                             <ChevronRight size={16} />
                           </span>
                         </div>
@@ -281,6 +276,13 @@ export default function TicketAnalysisPage() {
   );
 }
 
+function formatSimilarity(similarity: number) {
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(similarity)}%`;
+}
+
 function AnalysisLoadingState({ ticket }: { ticket: TicketAnalysis | null }) {
   return (
     <section className="max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
@@ -290,7 +292,7 @@ function AnalysisLoadingState({ ticket }: { ticket: TicketAnalysis | null }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <SearchCheck size={18} className="text-blue-600" />
+            <SearchCheck className="text-blue-600" size={18} />
             <p className="text-sm font-semibold text-blue-700">
               Análise em andamento
             </p>
@@ -308,6 +310,72 @@ function AnalysisLoadingState({ ticket }: { ticket: TicketAnalysis | null }) {
             Procurando atendimentos anteriores semelhantes...
           </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function SemanticSearchUnavailable({
+  ticket,
+  canRetry,
+  onRetry,
+}: {
+  ticket: TicketAnalysis | null;
+  canRetry: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="max-w-3xl space-y-5">
+      <CurrentTicketSummary ticket={ticket} />
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+            <CircleAlert size={24} />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">
+              Busca semântica indisponível no momento.
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Verifique o serviço local e tente novamente para continuar o atendimento.
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              {canRetry ? (
+                <button
+                  className="flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-900/15 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  onClick={onRetry}
+                  type="button"
+                >
+                  <SearchCheck size={18} />
+                  Tentar novamente
+                </button>
+              ) : null}
+              <Link
+                className="flex h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-600 transition hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                href="/chamados/novo"
+              >
+                <ArrowLeft size={17} />
+                Voltar ao chamado
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NoSimilarTickets({ ticket }: { ticket: TicketAnalysis | null }) {
+  return (
+    <section className="max-w-3xl space-y-5">
+      <CurrentTicketSummary ticket={ticket} />
+      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60">
+        <h2 className="text-base font-semibold text-slate-950">
+          Nenhum caso semelhante foi encontrado
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Não há atendimentos resolvidos suficientes para esta busca no momento.
+        </p>
       </div>
     </section>
   );
@@ -368,7 +436,7 @@ function CaseDetails({
             </h2>
           </div>
           <span className="shrink-0 rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
-            {similarCase.similarity}%
+            {formatSimilarity(similarCase.similarity)}
             <span className="ml-1 font-medium">similaridade</span>
           </span>
         </div>
@@ -395,10 +463,9 @@ function CaseDetails({
           label="Solução utilizada"
           text={similarCase.appliedSolution}
         />
-
         <section>
           <div className="flex items-center gap-2 text-slate-900">
-            <ListChecks size={17} className="text-slate-500" />
+            <ListChecks className="text-slate-500" size={17} />
             <h3 className="text-sm font-semibold">Passos executados</h3>
           </div>
           <ol className="mt-2.5 space-y-2">
@@ -412,7 +479,6 @@ function CaseDetails({
             ))}
           </ol>
         </section>
-
         <DetailSection label="Observações" text={similarCase.observation} />
       </div>
 
