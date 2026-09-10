@@ -174,13 +174,13 @@ export default async function Home() {
                               {formatTicketUpdatedAt(ticket.updatedAt)}
                             </td>
                             <td className="px-4 py-3">
-                              <button
+                              <Link
                                 aria-label={`Abrir ações do chamado ${ticket.ticketNumber}`}
                                 className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                                type="button"
+                                href={`/chamados/${ticket.id}`}
                               >
                                 <MoreHorizontal size={18} />
-                              </button>
+                              </Link>
                             </td>
                           </tr>
                         ))}

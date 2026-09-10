@@ -85,7 +85,7 @@ export default async function TicketsPage() {
                         <td className="px-5 py-4">
                           <Link
                             className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 hover:text-blue-800"
-                            href="/chamados/analise"
+                            href={`/chamados/${ticket.id}`}
                           >
                             <Eye size={17} />
                             Visualizar
