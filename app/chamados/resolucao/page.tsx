@@ -2,7 +2,7 @@
 
 import type { FormEvent } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -12,14 +12,17 @@ import {
   Wrench,
 } from "lucide-react";
 import { Sidebar } from "../../components/sidebar";
+import { resolveTicketAction } from "./actions";
 
 type Ticket = {
+  ticketId?: string;
   title: string;
   description: string;
   category?: string;
 };
 
 type ReferenceCase = {
+  ticketId?: string;
   id: string;
   title: string;
   similarity: number;
@@ -50,6 +53,8 @@ export default function ResolutionPage() {
   const [referenceCase, setReferenceCase] = useState<ReferenceCase | null>(null);
   const [values, setValues] = useState<ResolutionValues>(initialValues);
   const [errors, setErrors] = useState<ResolutionErrors>({});
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const storageTimeoutId = window.setTimeout(() => {
@@ -62,6 +67,7 @@ export default function ResolutionPage() {
 
   function updateField(field: keyof ResolutionValues, value: string) {
     setValues((currentValues) => ({ ...currentValues, [field]: value }));
+    setSubmissionError(null);
 
     if (field === "cause" || field === "solution") {
       setErrors((currentErrors) => ({ ...currentErrors, [field]: undefined }));
@@ -90,19 +96,33 @@ export default function ResolutionPage() {
       return;
     }
 
-    sessionStorage.setItem(
-      "reperio:ticket-resolution",
-      JSON.stringify({
-        cause: values.cause.trim(),
-        solution: values.solution.trim(),
-        steps: values.steps
-          .split("\n")
-          .map((step) => step.trim())
-          .filter(Boolean),
-        observations: values.observations.trim(),
-      }),
-    );
-    router.push("/chamados/concluido");
+    const steps = values.steps
+      .split("\n")
+      .map((step) => step.trim())
+      .filter(Boolean);
+
+    startTransition(async () => {
+      const result = await resolveTicketAction({
+        ticketId: ticket?.ticketId,
+        cause: values.cause,
+        solution: values.solution,
+        steps,
+        notes: values.observations,
+        referenceTicketId: referenceCase?.ticketId,
+        referenceSimilarity: referenceCase?.similarity,
+      });
+
+      if (!result.success) {
+        setSubmissionError(result.message);
+        return;
+      }
+
+      sessionStorage.setItem(
+        "reperio:resolved-ticket",
+        JSON.stringify({ ticketId: result.ticketId, indexed: result.indexed }),
+      );
+      router.push("/chamados/concluido");
+    });
   }
 
   return (
@@ -196,13 +216,19 @@ export default function ResolutionPage() {
                   Voltar aos casos semelhantes
                 </Link>
                 <button
-                  className="flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-900/15 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                  className="flex h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm shadow-blue-900/15 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-blue-400"
+                  disabled={isPending}
                   type="submit"
                 >
                   <Wrench size={18} />
-                  Resolver chamado
+                  {isPending ? "Salvando resolução..." : "Resolver chamado"}
                 </button>
               </div>
+              {submissionError ? (
+                <p className="mt-4 text-sm text-red-600" role="alert">
+                  {submissionError}
+                </p>
+              ) : null}
             </form>
 
             <aside className="sticky top-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60">

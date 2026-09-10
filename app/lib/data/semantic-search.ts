@@ -28,6 +28,7 @@ type ResolutionRow = {
 };
 
 export type SimilarTicketResult = {
+  ticketId: string;
   id: string;
   title: string;
   category: string;
@@ -185,6 +186,7 @@ export async function searchSimilarTicketsForTicket(
 
       return [
         {
+          ticketId: ticket.id,
           id: `#${ticket.ticket_number}`,
           title: ticket.title,
           category: ticket.category ?? "Sem categoria",

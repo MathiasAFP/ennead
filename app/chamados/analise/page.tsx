@@ -27,6 +27,7 @@ type TicketAnalysis = {
 };
 
 type SimilarCase = {
+  ticketId: string;
   id: string;
   title: string;
   category: string;

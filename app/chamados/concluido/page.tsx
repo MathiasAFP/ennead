@@ -5,34 +5,73 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, FilePlus2, LayoutDashboard } from "lucide-react";
 import { Sidebar } from "../../components/sidebar";
 
-type Ticket = {
-  title: string;
+type ResolvedTicketSummary = {
+  ticket: { title: string };
+  resolution: {
+    cause: string;
+    solution: string;
+    reference: { id: string; title: string; similarity: number } | null;
+  };
 };
 
-type ReferenceCase = {
-  id: string;
-  title: string;
-  similarity: number;
+type CompletionSummary = ResolvedTicketSummary & {
+  indexed: boolean;
 };
 
-type Resolution = {
-  cause: string;
-  solution: string;
+type ResolvedTicketStorage = {
+  ticketId: string;
+  indexed: boolean;
 };
 
 export default function CompletionPage() {
-  const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [referenceCase, setReferenceCase] = useState<ReferenceCase | null>(null);
-  const [resolution, setResolution] = useState<Resolution | null>(null);
+  const [summary, setSummary] = useState<CompletionSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    const storageTimeoutId = window.setTimeout(() => {
-      setTicket(readStorageItem<Ticket>("reperio:ticket-analysis"));
-      setReferenceCase(readStorageItem<ReferenceCase>("reperio:reference-case"));
-      setResolution(readStorageItem<Resolution>("reperio:ticket-resolution"));
-    }, 0);
+    const storedResolution = readStorageItem<ResolvedTicketStorage>(
+      "reperio:resolved-ticket",
+    );
 
-    return () => window.clearTimeout(storageTimeoutId);
+    if (!storedResolution?.ticketId) {
+      const missingResolutionTimeoutId = window.setTimeout(() => {
+        setIsLoading(false);
+        setLoadError(true);
+      }, 0);
+
+      return () => window.clearTimeout(missingResolutionTimeoutId);
+    }
+
+    const { ticketId, indexed } = storedResolution;
+    const controller = new AbortController();
+
+    async function loadSummary() {
+      try {
+        const response = await fetch(
+          `/api/tickets/${ticketId}/resolution`,
+          { cache: "no-store", signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          throw new Error("Unable to load the resolved ticket.");
+        }
+
+        const payload = (await response.json()) as ResolvedTicketSummary;
+        setSummary({ ...payload, indexed });
+      } catch {
+        if (!controller.signal.aborted) {
+          setLoadError(true);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadSummary();
+
+    return () => controller.abort();
   }, []);
 
   return (
@@ -51,29 +90,33 @@ export default function CompletionPage() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
               O atendimento foi registrado e poderá contribuir para futuras buscas por casos semelhantes.
             </p>
+            {summary && !summary.indexed ? (
+              <p className="mt-3 text-sm leading-5 text-amber-700">
+                Chamado salvo, mas a indexação para busca semântica não pôde ser concluída.
+              </p>
+            ) : null}
 
-            <div className="mt-7 divide-y divide-slate-100 border-y border-slate-100">
-              <SummaryRow
-                label="Chamado"
-                value={ticket?.title ?? "Chamado não informado"}
-              />
-              <SummaryRow
-                label="Causa"
-                value={resolution?.cause ?? "Causa não informada"}
-              />
-              <SummaryRow
-                label="Solução"
-                value={resolution?.solution ?? "Solução não informada"}
-              />
-              <SummaryRow
-                label="Referência utilizada"
-                value={
-                  referenceCase
-                    ? `${referenceCase.id} · ${referenceCase.title} · ${referenceCase.similarity}% de similaridade`
-                    : "Nenhuma referência informada"
-                }
-              />
-            </div>
+            {isLoading ? (
+              <p className="mt-7 text-sm text-slate-500">Carregando resolução registrada...</p>
+            ) : loadError || !summary ? (
+              <p className="mt-7 text-sm text-slate-600">
+                Não foi possível carregar o resumo da resolução no momento.
+              </p>
+            ) : (
+              <div className="mt-7 divide-y divide-slate-100 border-y border-slate-100">
+                <SummaryRow label="Chamado" value={summary.ticket.title} />
+                <SummaryRow label="Causa" value={summary.resolution.cause} />
+                <SummaryRow label="Solução" value={summary.resolution.solution} />
+                <SummaryRow
+                  label="Referência utilizada"
+                  value={
+                    summary.resolution.reference
+                      ? `${summary.resolution.reference.id} · ${summary.resolution.reference.title} · ${formatSimilarity(summary.resolution.reference.similarity)} de similaridade`
+                      : "Nenhuma referência informada"
+                  }
+                />
+              </div>
+            )}
 
             <div className="mt-7 flex items-center gap-3">
               <Link
@@ -96,6 +139,13 @@ export default function CompletionPage() {
       </section>
     </main>
   );
+}
+
+function formatSimilarity(similarity: number) {
+  return `${new Intl.NumberFormat("pt-BR", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  }).format(similarity)}%`;
 }
 
 function readStorageItem<T>(key: string) {
