@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "embeddings:backfill": "node --env-file=.env.local scripts/backfill-embeddings.mjs",
-    "semantic:test": "node --env-file=.env.local scripts/test-semantic-search.mjs"
+    "semantic:test": "node --env-file=.env.local scripts/test-semantic-search.mjs",
+    "demo:cleanup": "node --env-file=.env.local scripts/cleanup-demo-test-data.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
